@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChangeDetectorRef — Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;
+  --surface:#13161e;
+  --surface2:#1a1e28;
+  --border:#252a38;
+  --border2:#2f3547;
+  --accent:#4f8ef7;
+  --accent2:#7c3aed;
+  --green:#22c55e;
+  --red:#ef4444;
+  --amber:#f59e0b;
+  --text:#e8eaf0;
+  --muted:#7a8099;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:1fr 420px;grid-template-rows:auto 1fr;min-height:100vh;gap:0}
+.top-bar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:16px}
+.top-bar h1{font-size:16px;font-weight:700;letter-spacing:.5px;color:var(--text)}
+.top-bar .tag{font-family:var(--mono);font-size:11px;background:linear-gradient(135deg,#4f8ef722,#7c3aed22);border:1px solid #4f8ef744;color:var(--accent);padding:3px 10px;border-radius:4px}
+.score-badge{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.score-badge span{color:var(--green);font-weight:700}
+
+/* ── TREE PANEL ── */
+.tree-panel{grid-column:1;grid-row:2;background:var(--surface);border-right:1px solid var(--border);padding:24px;display:flex;flex-direction:column;align-items:center;gap:0;overflow:auto}
+.tree-title{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:1px;margin-bottom:18px;align-self:flex-start}
+
+/* ── QUIZ PANEL ── */
+.quiz-panel{grid-column:2;grid-row:2;background:var(--bg);display:flex;flex-direction:column;padding:24px;gap:16px;overflow:auto}
+
+/* ── METHOD TABS ── */
+.method-tabs{display:flex;flex-direction:column;gap:6px}
+.mtab{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .18s;text-align:left}
+.mtab:hover{border-color:var(--border2);background:var(--surface2)}
+.mtab.active{border-color:var(--accent);background:#4f8ef711}
+.mtab-code{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700}
+.mtab.active .mtab-code{color:#7dd3fc}
+.mtab-sub{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ── CONTEXT BOX ── */
+.context-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.context-box .ctx-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px}
+.context-box p{font-size:13px;line-height:1.7;color:var(--text)}
+.context-box code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:#93c5fd}
+
+/* ── QUESTION BOX ── */
+.question-box{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:16px;min-height:90px}
+.question-box .q-label{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px}
+.question-box p{font-size:13px;line-height:1.7;color:var(--text)}
+.question-box .q-hint{font-size:12px;color:var(--muted);margin-top:8px;font-family:var(--mono)}
+
+/* ── ANSWER OPTIONS ── */
+.answer-opts{display:flex;flex-direction:column;gap:7px}
+.aopt{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;font-family:var(--sans);color:var(--text);transition:all .15s;text-align:left;display:flex;align-items:center;gap:10px}
+.aopt:hover{border-color:var(--border2);background:var(--surface2)}
+.aopt.selected{border-color:var(--accent);background:#4f8ef718;color:#7dd3fc}
+.aopt.correct{border-color:var(--green);background:#22c55e18;color:#86efac;pointer-events:none}
+.aopt.wrong{border-color:var(--red);background:#ef444418;color:#fca5a5;pointer-events:none}
+.aopt.missed{border-color:var(--amber);background:#f59e0b18;color:#fcd34d;pointer-events:none}
+.aopt-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.6}
+.aopt-icon{font-size:14px;flex-shrink:0}
+
+/* ── RESULT ── */
+.result-box{border-radius:10px;padding:14px;font-size:13px;line-height:1.7;display:none}
+.result-box.show{display:block}
+.result-box.ok{background:#22c55e18;border:1px solid #22c55e44;color:#86efac}
+.result-box.fail{background:#ef444418;border:1px solid #ef444444;color:#fca5a5}
+.result-box .explain{margin-top:6px;font-size:12px;font-family:var(--mono);color:var(--muted)}
+
+/* ── CONTROLS ── */
+.ctrls{display:flex;gap:8px;margin-top:auto}
+.btn{padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--sans);font-size:13px;cursor:pointer;transition:all .15s;font-weight:600}
+.btn:hover{background:var(--surface2);border-color:var(--border2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#3b7de8}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── LEGEND ── */
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;font-family:var(--mono)}
+.leg{display:flex;align-items:center;gap:5px;color:var(--muted)}
+.ldot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* ── RULES ── */
+.rules-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.rules-box .rl{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px}
+.rule-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.6}
+.rule-item:last-child{border-bottom:none}
+.rule-item .ri-code{font-family:var(--mono);color:var(--accent);font-size:11px;flex-shrink:0;min-width:130px}
+
+/* ── SVG TREE ── */
+svg{overflow:visible}
+.node-g{cursor:pointer}
+.node-g rect{transition:all .18s}
+.node-g:hover rect.node-rect{filter:brightness(1.15)}
+.node-g.highlighted rect.node-rect{stroke-width:2.5!important}
+.node-g.clickable-node:hover rect.node-rect{filter:brightness(1.2);transform:scale(1.02);transform-origin:center}
+
+/* ── PULSE ANIM ── */
+@keyframes pulse-border{0%,100%{stroke-opacity:1}50%{stroke-opacity:.4}}
+.node-g.pulsing rect.node-rect{animation:pulse-border 1.2s ease-in-out infinite}
+
+/* mobile */
+@media(max-width:900px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}
+  .tree-panel{grid-column:1;grid-row:2;border-right:none;border-bottom:1px solid var(--border)}
+  .quiz-panel{grid-column:1;grid-row:3}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      <h1>ChangeDetectorRef</h1>
+    </div>
+    <span class="tag">Angular CD Quiz</span>
+    <div class="score-badge">To'g'ri: <span id="score-right">0</span> / <span id="score-total">0</span></div>
+  </div>
+
+  <!-- TREE PANEL -->
+  <div class="tree-panel">
+    <div class="tree-title">// COMPONENT TREE</div>
+    <div class="legend" style="margin-bottom:18px;align-self:flex-start">
+      <span class="leg"><span class="ldot" style="background:#1e3a5f;border:1px solid #378ADD"></span>Default</span>
+      <span class="leg"><span class="ldot" style="background:#0f3d2a;border:1px solid #1D9E75"></span>OnPush</span>
+      <span class="leg"><span class="ldot" style="background:#78350f;border:1px solid #f59e0b"></span>Ta'sirlanadi</span>
+      <span class="leg"><span class="ldot" style="background:#14532d;border:1px solid #22c55e"></span>To'g'ri ✓</span>
+      <span class="leg"><span class="ldot" style="background:#7f1d1d;border:1px solid #ef4444"></span>Xato ✗</span>
+    </div>
+    <svg id="tree-svg" width="580" height="520" viewBox="0 0 580 520">
+      <defs>
+        <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M1 1L9 5L1 9" fill="none" stroke="#2f3547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <filter id="glow-blue"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#4f8ef7" flood-opacity="0.5"/></filter>
+        <filter id="glow-green"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#22c55e" flood-opacity="0.5"/></filter>
+        <filter id="glow-amber"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#f59e0b" flood-opacity="0.5"/></filter>
+        <filter id="glow-red"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#ef4444" flood-opacity="0.5"/></filter>
+      </defs>
+      <g id="tree-lines"></g>
+      <g id="tree-nodes"></g>
+    </svg>
+  </div>
+
+  <!-- QUIZ PANEL -->
+  <div class="quiz-panel">
+
+    <!-- Method tabs -->
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px">// METOD TANLANG</div>
+      <div class="method-tabs" id="method-tabs"></div>
+    </div>
+
+    <!-- Context -->
+    <div class="context-box" id="context-box">
+      <div class="ctx-label">// METOD HAQIDA</div>
+      <p id="context-text">Metodni tanlang...</p>
+    </div>
+
+    <!-- Question -->
+    <div class="question-box" id="question-box" style="display:none">
+      <div class="q-label">// SAVOL</div>
+      <p id="q-situation"></p>
+      <div class="q-hint" id="q-hint"></div>
+    </div>
+
+    <!-- Answer options -->
+    <div class="answer-opts" id="answer-opts" style="display:none"></div>
+
+    <!-- Result -->
+    <div class="result-box" id="result-box">
+      <div id="result-verdict"></div>
+      <div class="explain" id="result-explain"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="ctrls">
+      <button class="btn primary" id="start-btn" onclick="startQuiz()">▶ Savol boshlash</button>
+      <button class="btn" id="check-btn" onclick="checkAnswer()" style="display:none" disabled>Tekshirish</button>
+      <button class="btn" id="next-btn" onclick="nextQuestion()" style="display:none">Keyingisi →</button>
+    </div>
+
+    <!-- Rules -->
+    <div class="rules-box">
+      <div class="rl">// QOIDALAR</div>
+      <div class="rule-item">
+        <span class="ri-code">markForCheck()</span>
+        <span>O'sha komponent + barcha ota-onalar (root gacha) dirty bo'ladi. Keyingi CD siklida tekshiriladi.</span>
+      </div>
+      <div class="rule-item">
+        <span class="ri-code">detach()</span>
+        <span>Faqat o'sha komponentni CD daraxtidan uzadi. Bolalari ham tekshirilmaydi.</span>
+      </div>
+      <div class="rule-item">
+        <span class="ri-code">reattach()</span>
+        <span>Uzilgan komponentni qayta ulaydi. Bolalari hali detached bo'lib qoladi.</span>
+      </div>
+      <div class="rule-item">
+        <span class="ri-code">detectChanges()</span>
+        <span>O'sha komponent + bolalarini sinxron tekshiradi. Ota-onalarga ta'sir qilmaydi.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ───────────────────────────────────────────────────────────────
+// NODES
+// ───────────────────────────────────────────────────────────────
+const NODES = [
+  {id:'app',     label:'AppComponent',      sub:'ChangeDetectionStrategy.Default', cd:'default', x:205, y:20,  w:170, h:56, parent:null},
+  {id:'sidebar', label:'SidebarComponent',  sub:'ChangeDetectionStrategy.OnPush',  cd:'onpush',  x:40,  y:140, w:170, h:56, parent:'app'},
+  {id:'main',    label:'MainComponent',     sub:'ChangeDetectionStrategy.Default', cd:'default', x:370, y:140, w:170, h:56, parent:'app'},
+  {id:'menu',    label:'MenuComponent',     sub:'ChangeDetectionStrategy.OnPush',  cd:'onpush',  x:10,  y:270, w:160, h:56, parent:'sidebar'},
+  {id:'profile', label:'ProfileComponent',  sub:'ChangeDetectionStrategy.OnPush',  cd:'onpush',  x:180, y:270, w:160, h:56, parent:'sidebar'},
+  {id:'feed',    label:'FeedComponent',     sub:'ChangeDetectionStrategy.OnPush',  cd:'onpush',  x:340, y:270, w:160, h:56, parent:'main'},
+  {id:'ads',     label:'AdsComponent',      sub:'ChangeDetectionStrategy.Default', cd:'default', x:510, y:270, w:160, h:56, parent:'main'},
+  {id:'card',    label:'CardComponent',     sub:'ChangeDetectionStrategy.OnPush',  cd:'onpush',  x:240, y:400, w:160, h:56, parent:'feed'},
+  {id:'like',    label:'LikeComponent',     sub:'ChangeDetectionStrategy.OnPush',  cd:'onpush',  x:420, y:400, w:160, h:56, parent:'feed'},
+];
+
+const FILLS = {
+  default: {bg:'#1a2744',stroke:'#378ADD',text:'#93c5fd',sub:'#4e7ab0'},
+  onpush:  {bg:'#0f2d1e',stroke:'#1D9E75',text:'#6ee7b7',sub:'#2d7a54'},
+  target:  {bg:'#2d1f00',stroke:'#f59e0b',text:'#fcd34d',sub:'#a06010'},
+  highlight:{bg:'#2d1600',stroke:'#f59e0b',text:'#fcd34d',sub:'#8a5010'},
+  correct:  {bg:'#0f2d18',stroke:'#22c55e',text:'#86efac',sub:'#1a6b30'},
+  wrong:    {bg:'#2d0f0f',stroke:'#ef4444',text:'#fca5a5',sub:'#7f1d1d'},
+  missed:   {bg:'#2d1f00',stroke:'#f59e0b',text:'#fcd34d',sub:'#a06010'},
+  dim:      {bg:'#111318',stroke:'#252a38',text:'#3a3f50',sub:'#252a38'},
+};
+
+// ───────────────────────────────────────────────────────────────
+// METHODS + QUESTIONS
+// ───────────────────────────────────────────────────────────────
+const METHODS = [
+  {
+    id:'markForCheck',
+    code:'markForCheck()',
+    short:'Ota-onalarni dirty qiladi',
+    context:`Siz <code>FeedComponent</code>da WebSocket orqali real-time ma'lumot olmoqdasiz. <code>OnPush</code> bo'lgani uchun Angular uni avtomatik tekshirmaydi. Shu sababli <code>constructor(private cdr: ChangeDetectorRef){}</code> qilib, ma'lumot kelganda <code>this.cdr.markForCheck()</code> chaqirasiz.<br><br>Bu metod komponent + barcha ota-onalarni <em>root gacha</em> "dirty" deb belgilaydi. Keyingi Angular CD siklida ular tekshiriladi.`,
+    questions:[
+      {
+        situation:`Siz <strong>FeedComponent</strong>da subscription bor: server yangi post yubordi. <code>this.cdr.markForCheck()</code> chaqirildi.`,
+        q:`Qaysi komponentlar keyingi CD siklida tekshiriladi?`,
+        type:'multi',
+        options:['FeedComponent','CardComponent','MainComponent','AppComponent','SidebarComponent','AdsComponent'],
+        answer:['FeedComponent','MainComponent','AppComponent'],
+        explain:`markForCheck() — Feed → Main → App (root gacha). Bolalari (Card, Like) ta'sirsiz. Sidebar, Menu, Profile, Ads ta'sirsiz.`,
+        tree_highlight:['feed','main','app'],
+        tree_target:'feed'
+      },
+      {
+        situation:`<strong>LikeComponent</strong>da user like bosdi, OnPush bo'lgani uchun <code>this.cdr.markForCheck()</code> chaqirildi.`,
+        q:`Qaysi komponentlar dirty bo'ladi?`,
+        type:'multi',
+        options:['LikeComponent','FeedComponent','CardComponent','MainComponent','AppComponent'],
+        answer:['LikeComponent','FeedComponent','MainComponent','AppComponent'],
+        explain:`Like → Feed → Main → App. Card ta'sirsiz — u LikeComponent ning aka-ukasi, ota-onasi emas.`,
+        tree_highlight:['like','feed','main','app'],
+        tree_target:'like'
+      },
+      {
+        situation:`<strong>ProfileComponent</strong>da foydalanuvchi nomi o'zgardi, <code>this.cdr.markForCheck()</code> chaqirildi.`,
+        q:`Qaysi komponentlar tekshiriladi?`,
+        type:'multi',
+        options:['ProfileComponent','SidebarComponent','AppComponent','MainComponent','MenuComponent'],
+        answer:['ProfileComponent','SidebarComponent','AppComponent'],
+        explain:`Profile → Sidebar → App. Main, Menu, Feed, Card, Like ta'sirsiz.`,
+        tree_highlight:['profile','sidebar','app'],
+        tree_target:'profile'
+      },
+      {
+        situation:`<strong>MenuComponent</strong>da active route o'zgardi, <code>this.cdr.markForCheck()</code> chaqirildi.`,
+        q:`Qaysi komponentlar dirty bo'ladi?`,
+        type:'multi',
+        options:['MenuComponent','SidebarComponent','AppComponent','ProfileComponent','MainComponent'],
+        answer:['MenuComponent','SidebarComponent','AppComponent'],
+        explain:`Menu → Sidebar → App. Profile, Main, Feed va boshqalar ta'sirsiz.`,
+        tree_highlight:['menu','sidebar','app'],
+        tree_target:'menu'
+      },
+    ]
+  },
+  {
+    id:'detach',
+    code:'detach()',
+    short:'Komponentni CD daraxtidan uzadi',
+    context:`<code>AdsComponent</code> har 100ms da ma'lumot yangilanadi. Bu butun ilovani sekinlashtiradi. Siz <code>this.cdr.detach()</code> chaqirasiz — endi Angular bu komponentni <em>hech qachon</em> avtomatik tekshirmaydi.<br><br>Manual boshqaruv: faqat <code>detectChanges()</code> yoki <code>reattach()</code> bilan yangilanadi. Bolalari ham tekshirilmaydi.`,
+    questions:[
+      {
+        situation:`<strong>FeedComponent</strong>da <code>ngOnInit()</code>da <code>this.cdr.detach()</code> chaqirildi.`,
+        q:`Keyingi CD siklida qaysi komponentlar TEKSHIRILMAYDI (skip bo'ladi)?`,
+        type:'multi',
+        options:['FeedComponent','CardComponent','LikeComponent','MainComponent','AppComponent'],
+        answer:['FeedComponent','CardComponent','LikeComponent'],
+        explain:`Feed detached → Feed + bolalari (Card, Like) avtomatik tekshirilmaydi. Main va App odatdagidek ishlaydi.`,
+        tree_highlight:['feed','card','like'],
+        tree_target:'feed'
+      },
+      {
+        situation:`<strong>SidebarComponent</strong>da <code>this.cdr.detach()</code> chaqirildi.`,
+        q:`Qaysi komponentlar skip bo'ladi?`,
+        type:'multi',
+        options:['SidebarComponent','MenuComponent','ProfileComponent','AppComponent','MainComponent'],
+        answer:['SidebarComponent','MenuComponent','ProfileComponent'],
+        explain:`Sidebar detached → Sidebar + bolalari (Menu, Profile) skip. App va Main ta'sirsiz.`,
+        tree_highlight:['sidebar','menu','profile'],
+        tree_target:'sidebar'
+      },
+      {
+        situation:`<strong>AdsComponent</strong>da <code>this.cdr.detach()</code> chaqirildi. AdsComponent ning bolalari yo'q.`,
+        q:`Natija nima bo'ladi?`,
+        type:'single',
+        options:[
+          `Faqat AdsComponent skip bo'ladi`,
+          `AdsComponent va barcha aka-ukalari skip bo'ladi`,
+          `AdsComponent + MainComponent skip bo'ladi`,
+          `Hech narsa o'zgarmaydi`
+        ],
+        answer:[`Faqat AdsComponent skip bo'ladi`],
+        explain:`Ads ning bolasi yo'q — faqat u o'zi skip. Main, App odatdagidek. Aka-ukalar (Feed) ta'sirsiz.`,
+        tree_highlight:['ads'],
+        tree_target:'ads'
+      },
+    ]
+  },
+  {
+    id:'reattach',
+    code:'reattach()',
+    short:'Uzilgan komponentni qayta ulaydi',
+    context:`<code>detach()</code> qilingan komponentni ma'lum bir hodisa bo'lganda qayta CD daraxtiga ulash kerak. <code>this.cdr.reattach()</code> — <em>faqat o'sha</em> komponentni qayta ulaydi.<br><br>Muhim: bolalari alohida <code>detach()</code> qilingan bo'lsa, ular hali ham uzilgan bo'ladi. <code>reattach()</code> cascade ishlamaydi.`,
+    questions:[
+      {
+        situation:`Feed, Card, Like — hammasi <code>detach()</code> qilingan edi. Faqat <strong>FeedComponent</strong>da <code>this.cdr.reattach()</code> chaqirildi.`,
+        q:`Keyingi CD siklida qaysilar tekshiriladi?`,
+        type:'multi',
+        options:['FeedComponent','CardComponent','LikeComponent','MainComponent'],
+        answer:['FeedComponent'],
+        explain:`reattach() faqat Feed ni ulaydi. Card va Like hali detached — ular hali skip. Main ta'sirsiz (u hech qachon detach qilinmagan).`,
+        tree_highlight:['feed'],
+        tree_target:'feed'
+      },
+      {
+        situation:`<strong>AdsComponent</strong> oldin <code>detach()</code> qilingan edi. Endi <code>this.cdr.reattach()</code> chaqirildi.`,
+        q:`Natija nima?`,
+        type:'single',
+        options:[
+          `Ads qayta CD daraxtiga ulandi, keyingi siklda tekshiriladi`,
+          'Ads qayta ulandi, lekin bolalari hali detached',
+          `Hech narsa o'zgarmaydi`,
+          'Ads + Main qayta ulandi'
+        ],
+        answer:[`Ads qayta CD daraxtiga ulandi, keyingi siklda tekshiriladi`],
+        explain:`Ads ning bolasi yo'q, shuning uchun shunchaki o'zi qayta ulanadi va keyingi siklda tekshiriladi.`,
+        tree_highlight:['ads'],
+        tree_target:'ads'
+      },
+      {
+        situation:`Sidebar va uning bolalari (Menu, Profile) barchasi <code>detach()</code> qilingan. Faqat <strong>MenuComponent</strong>da <code>reattach()</code> chaqirildi.`,
+        q:`Keyingi CD siklida qaysilar tekshiriladi?`,
+        type:'multi',
+        options:['MenuComponent','SidebarComponent','ProfileComponent','AppComponent'],
+        answer:['MenuComponent'],
+        explain:`reattach() faqat Menu ni ulaydi. Lekin Sidebar hali detached — Angular tree traversal qilganda Sidebar ni skip qiladi va uning bolalariga (jumladan Menu) yetib bormaydi! Shuning uchun reattach() Sidebar dan boshlash kerak edi.`,
+        tree_highlight:['menu'],
+        tree_target:'menu'
+      },
+    ]
+  },
+  {
+    id:'detectChanges',
+    code:'detectChanges()',
+    short:'Sinxron, faqat o\'sha komponent+bolalar',
+    context:`OnPush komponentda async pipe yo'q, markForCheck() ham ishlatmaysiz. Lekin ma'lum bir hodisadan keyin <em>hoziroq</em>, sinxron yangilanish kerak. <code>this.cdr.detectChanges()</code> — Angular CD siklini kutmay, faqat o'sha komponent va bolalarini <em>hoziroq</em> tekshiradi.<br><br>Detached komponentlarda ham ishlaydi. Ota-onalarga hech qachon ta'sir qilmaydi.`,
+    questions:[
+      {
+        situation:`<strong>FeedComponent</strong>da ma'lumot keldi, <code>this.cdr.detectChanges()</code> chaqirildi.`,
+        q:`Qaysi komponentlar HOZIROQ, sinxron tekshiriladi?`,
+        type:'multi',
+        options:['FeedComponent','CardComponent','LikeComponent','MainComponent','AppComponent'],
+        answer:['FeedComponent','CardComponent','LikeComponent'],
+        explain:`detectChanges() — Feed + bolalari (Card, Like) sinxron tekshiriladi. Main va App ta'sirsiz — ota-onalar hech qachon ta'sirlanmaydi.`,
+        tree_highlight:['feed','card','like'],
+        tree_target:'feed'
+      },
+      {
+        situation:`<strong>CardComponent</strong>da (bolasi yo'q) <code>this.cdr.detectChanges()</code> chaqirildi.`,
+        q:`Qaysi komponentlar tekshiriladi?`,
+        type:'single',
+        options:[
+          `Faqat CardComponent`,
+          `CardComponent + FeedComponent`,
+          `CardComponent + LikeComponent`,
+          `Hamma komponentlar`
+        ],
+        answer:[`Faqat CardComponent`],
+        explain:`Card ning bolasi yo'q — faqat o'zi tekshiriladi. FeedComponent, Main, App ta'sirsiz.`,
+        tree_highlight:['card'],
+        tree_target:'card'
+      },
+      {
+        situation:`<strong>FeedComponent</strong> oldin <code>detach()</code> qilingan (CD daraxtidan uzilgan). Keyin <code>this.cdr.detectChanges()</code> chaqirildi.`,
+        q:`Natija nima bo'ladi?`,
+        type:'single',
+        options:[
+          'detectChanges() detached komponentda ham ishlaydi, Feed + bolalari tekshiriladi',
+          'Xato — detached komponentda detectChanges() ishlamaydi',
+          'Faqat bolalari tekshiriladi, Feed o\'zi emas',
+          'Hech narsa bo\'lmaydi'
+        ],
+        answer:[`detectChanges() detached komponentda ham ishlaydi, Feed + bolalari tekshiriladi`],
+        explain:`Bu detectChanges() ning kuchli tomoni — detach()+detectChanges() kombinatsiyasi manual CD boshqaruv pattern. Feed va bolalari (Card, Like) tekshiriladi.`,
+        tree_highlight:['feed','card','like'],
+        tree_target:'feed'
+      },
+      {
+        situation:`<strong>SidebarComponent</strong>da user action bo'ldi, <code>this.cdr.detectChanges()</code> chaqirildi.`,
+        q:`Qaysi komponentlar tekshiriladi?`,
+        type:'multi',
+        options:['SidebarComponent','MenuComponent','ProfileComponent','AppComponent','MainComponent'],
+        answer:['SidebarComponent','MenuComponent','ProfileComponent'],
+        explain:`detectChanges() — Sidebar + bolalari (Menu, Profile) tekshiriladi. App, Main ta'sirsiz.`,
+        tree_highlight:['sidebar','menu','profile'],
+        tree_target:'sidebar'
+      },
+    ]
+  },
+];
+
+// ───────────────────────────────────────────────────────────────
+// STATE
+// ───────────────────────────────────────────────────────────────
+let currentMethod = METHODS[0];
+let currentQ = null;
+let userSelected = [];
+let checked = false;
+let scoreRight = 0;
+let scoreTotal = 0;
+let usedQIdx = {};
+let treeState = {}; // id -> 'normal'|'highlight'|'target'|'correct'|'wrong'|'missed'|'dim'
+
+// ───────────────────────────────────────────────────────────────
+// BUILD TABS
+// ───────────────────────────────────────────────────────────────
+function buildTabs(){
+  const el = document.getElementById('method-tabs');
+  el.innerHTML = '';
+  METHODS.forEach(m=>{
+    const btn = document.createElement('button');
+    btn.className = 'mtab' + (m.id===currentMethod.id?' active':'');
+    btn.innerHTML = `<div><div class="mtab-code">${m.code}</div><div class="mtab-sub">${m.short}</div></div>`;
+    btn.onclick = ()=>{ selectMethod(m); };
+    el.appendChild(btn);
+  });
+}
+
+function selectMethod(m){
+  currentMethod = m;
+  checked = false;
+  userSelected = [];
+  currentQ = null;
+  document.getElementById('question-box').style.display='none';
+  document.getElementById('answer-opts').style.display='none';
+  document.getElementById('result-box').className='result-box';
+  document.getElementById('check-btn').style.display='none';
+  document.getElementById('next-btn').style.display='none';
+  document.getElementById('start-btn').style.display='';
+  buildTabs();
+  document.getElementById('context-text').innerHTML = m.context;
+  treeState={};
+  renderTree();
+}
+
+// ───────────────────────────────────────────────────────────────
+// TREE RENDER
+// ───────────────────────────────────────────────────────────────
+function renderTree(){
+  const lG = document.getElementById('tree-lines');
+  const nG = document.getElementById('tree-nodes');
+  lG.innerHTML=''; nG.innerHTML='';
+
+  // Lines
+  NODES.forEach(n=>{
+    if(!n.parent) return;
+    const p = NODES.find(x=>x.id===n.parent);
+    const x1=p.x+p.w/2, y1=p.y+p.h;
+    const x2=n.x+n.w/2, y2=n.y;
+    // mid bend
+    const mid = (y1+y2)/2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M${x1},${y1} C${x1},${mid} ${x2},${mid} ${x2},${y2}`);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','#252a38');
+    path.setAttribute('stroke-width','1.5');
+    path.setAttribute('marker-end','url(#arw)');
+    lG.appendChild(path);
+  });
+
+  // Nodes
+  NODES.forEach(n=>{
+    const state = treeState[n.id] || 'normal';
+    let c;
+    if(state==='target')     c=FILLS.target;
+    else if(state==='highlight') c=FILLS.highlight;
+    else if(state==='correct')   c=FILLS.correct;
+    else if(state==='wrong')     c=FILLS.wrong;
+    else if(state==='missed')    c=FILLS.missed;
+    else if(state==='dim')       c=FILLS.dim;
+    else                         c=FILLS[n.cd];
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node-g');
+
+    // glow filter
+    let filterAttr='';
+    if(state==='target')    filterAttr='url(#glow-amber)';
+    if(state==='highlight') filterAttr='url(#glow-amber)';
+    if(state==='correct')   filterAttr='url(#glow-green)';
+    if(state==='wrong')     filterAttr='url(#glow-red)';
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('class','node-rect');
+    rect.setAttribute('x',n.x); rect.setAttribute('y',n.y);
+    rect.setAttribute('width',n.w); rect.setAttribute('height',n.h);
+    rect.setAttribute('rx','10');
+    rect.setAttribute('fill',c.bg);
+    rect.setAttribute('stroke',c.stroke);
+    rect.setAttribute('stroke-width',state==='target'?'2':'1');
+    if(filterAttr) rect.setAttribute('filter',filterAttr);
+    g.appendChild(rect);
+
+    // label
+    const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t1.setAttribute('x',n.x+n.w/2); t1.setAttribute('y',n.y+18);
+    t1.setAttribute('text-anchor','middle'); t1.setAttribute('dominant-baseline','central');
+    t1.setAttribute('font-size','12'); t1.setAttribute('font-weight','700');
+    t1.setAttribute('font-family','JetBrains Mono, monospace');
+    t1.setAttribute('fill',c.text);
+    t1.textContent=n.label;
+    g.appendChild(t1);
+
+    // strategy sub
+    const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t2.setAttribute('x',n.x+n.w/2); t2.setAttribute('y',n.y+38);
+    t2.setAttribute('text-anchor','middle'); t2.setAttribute('dominant-baseline','central');
+    t2.setAttribute('font-size','9');
+    t2.setAttribute('font-family','JetBrains Mono, monospace');
+    t2.setAttribute('fill',c.sub);
+    // shorten sub
+    const shortSub = n.cd==='onpush'?'OnPush':'Default';
+    t2.textContent=shortSub;
+    g.appendChild(t2);
+
+    // state badge
+    if(state==='target'){
+      const badge=document.createElementNS('http://www.w3.org/2000/svg','text');
+      badge.setAttribute('x',n.x+n.w-6); badge.setAttribute('y',n.y+10);
+      badge.setAttribute('text-anchor','end'); badge.setAttribute('font-size','10');
+      badge.setAttribute('fill','#f59e0b'); badge.textContent='▶';
+      g.appendChild(badge);
+    }
+    if(state==='correct'){
+      const badge=document.createElementNS('http://www.w3.org/2000/svg','text');
+      badge.setAttribute('x',n.x+n.w-6); badge.setAttribute('y',n.y+10);
+      badge.setAttribute('text-anchor','end'); badge.setAttribute('font-size','10');
+      badge.setAttribute('fill','#22c55e'); badge.textContent='✓';
+      g.appendChild(badge);
+    }
+    if(state==='wrong'){
+      const badge=document.createElementNS('http://www.w3.org/2000/svg','text');
+      badge.setAttribute('x',n.x+n.w-6); badge.setAttribute('y',n.y+10);
+      badge.setAttribute('text-anchor','end'); badge.setAttribute('font-size','10');
+      badge.setAttribute('fill','#ef4444'); badge.textContent='✗';
+      g.appendChild(badge);
+    }
+
+    nG.appendChild(g);
+  });
+}
+
+// ───────────────────────────────────────────────────────────────
+// QUIZ LOGIC
+// ───────────────────────────────────────────────────────────────
+function startQuiz(){
+  const qs = currentMethod.questions;
+  if(!usedQIdx[currentMethod.id]) usedQIdx[currentMethod.id]=[];
+  let avail = qs.map((_,i)=>i).filter(i=>!usedQIdx[currentMethod.id].includes(i));
+  if(avail.length===0){ usedQIdx[currentMethod.id]=[]; avail=qs.map((_,i)=>i); }
+  const idx = avail[Math.floor(Math.random()*avail.length)];
+  usedQIdx[currentMethod.id].push(idx);
+  currentQ = qs[idx];
+
+  checked = false;
+  userSelected = [];
+
+  // question box
+  document.getElementById('question-box').style.display='block';
+  document.getElementById('q-situation').innerHTML = currentQ.situation;
+  document.getElementById('q-hint').textContent = '→ '+currentQ.q;
+
+  // options
+  const optsEl = document.getElementById('answer-opts');
+  optsEl.style.display='flex';
+  optsEl.innerHTML='';
+  const shuffled = [...currentQ.options].sort(()=>Math.random()-.5);
+  shuffled.forEach(opt=>{
+    const btn=document.createElement('button');
+    btn.className='aopt';
+    btn.setAttribute('data-opt', opt);
+    btn.innerHTML = `<span class="aopt-dot"></span>${opt}`;
+    btn.onclick=()=>toggleOpt(opt, btn);
+    optsEl.appendChild(btn);
+  });
+
+  document.getElementById('result-box').className='result-box';
+  document.getElementById('check-btn').style.display='';
+  document.getElementById('check-btn').disabled=true;
+  document.getElementById('next-btn').style.display='none';
+  document.getElementById('start-btn').style.display='none';
+
+  // tree: show target
+  treeState={};
+  treeState[currentQ.tree_target]='target';
+  renderTree();
+}
+
+function toggleOpt(opt, btn){
+  if(checked) return;
+  if(currentQ.type==='single'){
+    userSelected=[];
+    document.querySelectorAll('.aopt').forEach(b=>b.classList.remove('selected'));
+    userSelected=[opt];
+    btn.classList.add('selected');
+  } else {
+    const idx=userSelected.indexOf(opt);
+    if(idx===-1){ userSelected.push(opt); btn.classList.add('selected'); }
+    else{ userSelected.splice(idx,1); btn.classList.remove('selected'); }
+  }
+  document.getElementById('check-btn').disabled = userSelected.length===0;
+}
+
+function checkAnswer(){
+  checked=true;
+  scoreTotal++;
+
+  const correctSet = new Set(currentQ.answer);
+  const userSet = new Set(userSelected);
+  const isRight = currentQ.answer.every(a=>userSet.has(a)) && userSelected.every(u=>correctSet.has(u));
+  if(isRight) scoreRight++;
+
+  document.getElementById('score-right').textContent=scoreRight;
+  document.getElementById('score-total').textContent=scoreTotal;
+
+  // color options
+  document.querySelectorAll('.aopt').forEach(btn=>{
+    const opt=btn.getAttribute('data-opt');
+    const inAnswer=correctSet.has(opt);
+    const inUser=userSet.has(opt);
+    btn.classList.remove('selected');
+    if(inAnswer&&inUser)       btn.className='aopt correct';
+    else if(!inAnswer&&inUser) btn.className='aopt wrong';
+    else if(inAnswer&&!inUser) btn.className='aopt missed';
+  });
+
+  // result box
+  const rb=document.getElementById('result-box');
+  rb.className='result-box show '+(isRight?'ok':'fail');
+  document.getElementById('result-verdict').textContent = isRight ? '✅ To\'g\'ri!' : '❌ Xato.';
+  document.getElementById('result-explain').textContent = currentQ.explain;
+
+  // tree highlight
+  treeState={};
+  NODES.forEach(n=>{
+    const inAnswer = currentQ.tree_highlight.includes(n.id);
+    const isTarget = n.id===currentQ.tree_target;
+    if(isTarget && inAnswer)  treeState[n.id]='highlight';
+    else if(inAnswer)          treeState[n.id]='highlight';
+    else                       treeState[n.id]='dim';
+  });
+  renderTree();
+
+  document.getElementById('check-btn').style.display='none';
+  document.getElementById('next-btn').style.display='';
+  document.getElementById('start-btn').style.display='';
+  document.getElementById('start-btn').textContent='↺ Qayta';
+}
+
+function nextQuestion(){
+  startQuiz();
+}
+
+// ───────────────────────────────────────────────────────────────
+// INIT
+// ───────────────────────────────────────────────────────────────
+buildTabs();
+document.getElementById('context-text').innerHTML = METHODS[0].context;
+renderTree();
+</script>
+</body>
+</html>
